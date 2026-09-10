@@ -1,6 +1,6 @@
 import { desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertMenuItem, InsertUser, menuItems, reservations, users } from "../drizzle/schema";
+import { InsertMenuItem, InsertOrder, InsertUser, menuItems, orders, reservations, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -112,5 +112,28 @@ export async function updateReservationStatus(id: number, status: "pending" | "c
   if (!db) throw new Error("Database is not available");
   await db.update(reservations).set({ status }).where(eq(reservations.id, id));
   const updated = await db.select().from(reservations).where(eq(reservations.id, id)).limit(1);
+  return updated[0];
+}
+
+export async function createOrder(input: InsertOrder) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  const result = await db.insert(orders).values(input);
+  const id = Number(result[0].insertId);
+  const created = await db.select().from(orders).where(eq(orders.id, id)).limit(1);
+  return created[0];
+}
+
+export async function listOrders() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(orders).orderBy(desc(orders.createdAt));
+}
+
+export async function updateOrderStatus(id: number, status: "new" | "confirmed" | "preparing" | "ready" | "delivered" | "cancelled") {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  await db.update(orders).set({ status }).where(eq(orders.id, id));
+  const updated = await db.select().from(orders).where(eq(orders.id, id)).limit(1);
   return updated[0];
 }

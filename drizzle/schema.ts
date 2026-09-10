@@ -40,9 +40,25 @@ export const reservations = mysqlTable("reservations", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+export const orders = mysqlTable("orders", {
+  id: int("id").autoincrement().primaryKey(),
+  orderType: mysqlEnum("orderType", ["reservation", "takeaway", "delivery", "room_service"]).notNull(),
+  status: mysqlEnum("status", ["new", "confirmed", "preparing", "ready", "delivered", "cancelled"]).default("new").notNull(),
+  customerName: varchar("customerName", { length: 180 }).notNull(),
+  customerPhone: varchar("customerPhone", { length: 40 }),
+  roomNumber: varchar("roomNumber", { length: 40 }),
+  address: text("address"),
+  reservationId: int("reservationId"),
+  itemsJson: text("itemsJson").notNull(),
+  total: int("total").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type MenuItem = typeof menuItems.$inferSelect;
 export type InsertMenuItem = typeof menuItems.$inferInsert;
 export type Reservation = typeof reservations.$inferSelect;
 export type InsertReservation = typeof reservations.$inferInsert;
+export type Order = typeof orders.$inferSelect;
+export type InsertOrder = typeof orders.$inferInsert;

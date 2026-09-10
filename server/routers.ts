@@ -7,12 +7,15 @@ import { notifyOwner } from "./_core/notification";
 import { storagePut } from "./storage";
 import {
   createMenuItem,
+  createOrder,
   createReservation,
   deleteMenuItem,
   listAllMenuItems,
   listMenuItems,
+  listOrders,
   listReservations,
   updateMenuItem,
+  updateOrderStatus,
   updateReservationStatus,
 } from "./db";
 
@@ -59,6 +62,32 @@ export const appRouter = router({
       return reservation;
     }),
   }),
+  orders: router({
+    callWaiter: publicProcedure.input(z.object({ location: z.string().max(80).optional() })).mutation(async ({ input }) => {
+      await notifyOwner({ title: "نداء نادل جديد", content: `يرجى التوجه إلى: ${input.location || "الطاولة غير محددة"}` }).catch((error) => console.warn("[Waiter] Owner notification failed:", error));
+      return { success: true } as const;
+    }),
+    create: publicProcedure.input(z.object({
+      orderType: z.enum(["reservation", "takeaway", "delivery", "room_service"]),
+      customerName: z.string().min(2).max(180),
+      customerPhone: z.string().max(40).optional(),
+      roomNumber: z.string().max(40).optional(),
+      address: z.string().max(1000).optional(),
+      reservationAt: z.coerce.date().optional(),
+      guestCount: z.number().int().min(1).max(30).optional(),
+      items: z.array(z.object({ id: z.string(), title: z.string().max(180), quantity: z.number().int().min(1).max(99), price: z.number().int().min(0) })).min(1),
+      total: z.number().int().min(0).max(999999),
+    })).mutation(async ({ input }) => {
+      let reservationId: number | undefined;
+      if (input.orderType === "reservation" && input.reservationAt) {
+        const reservation = await createReservation({ guestName: input.customerName, guestCount: input.guestCount ?? 2, reservationAt: input.reservationAt });
+        reservationId = reservation?.id;
+      }
+      const order = await createOrder({ orderType: input.orderType, customerName: input.customerName, customerPhone: input.customerPhone, roomNumber: input.roomNumber, address: input.address, reservationId, itemsJson: JSON.stringify(input.items), total: input.total });
+      await notifyOwner({ title: "طلب جديد في Olive & Clay", content: `العميل: ${input.customerName}\nنوع الطلب: ${input.orderType}\nالإجمالي: ${input.total} SAR` }).catch((error) => console.warn("[Order] Owner notification failed:", error));
+      return order;
+    }),
+  }),
   admin: router({
     me: adminMenuProcedure.query(({ ctx }) => ctx.user),
     menu: router({
@@ -80,6 +109,10 @@ export const appRouter = router({
     reservations: router({
       list: adminMenuProcedure.query(() => listReservations()),
       updateStatus: adminMenuProcedure.input(z.object({ id: z.number().int().positive(), status: z.enum(["pending", "confirmed", "cancelled"]) })).mutation(({ input }) => updateReservationStatus(input.id, input.status)),
+    }),
+    orders: router({
+      list: adminMenuProcedure.query(() => listOrders()),
+      updateStatus: adminMenuProcedure.input(z.object({ id: z.number().int().positive(), status: z.enum(["new", "confirmed", "preparing", "ready", "delivered", "cancelled"]) })).mutation(({ input }) => updateOrderStatus(input.id, input.status)),
     }),
   }),
 });
