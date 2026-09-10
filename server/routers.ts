@@ -3,6 +3,8 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { adminProcedure, publicProcedure, router } from "./_core/trpc";
+import { notifyOwner } from "./_core/notification";
+import { storagePut } from "./storage";
 import {
   createMenuItem,
   createReservation,
@@ -48,12 +50,29 @@ export const appRouter = router({
       guestName: z.string().min(2).max(180),
       guestCount: z.number().int().min(1).max(30),
       reservationAt: z.coerce.date(),
-    })).mutation(({ input }) => createReservation(input)),
+    })).mutation(async ({ input }) => {
+      const reservation = await createReservation(input);
+      await notifyOwner({
+        title: "حجز جديد في Olive & Clay",
+        content: `الاسم: ${input.guestName}\nعدد الضيوف: ${input.guestCount}\nالموعد: ${input.reservationAt.toLocaleString("ar-SA")}`,
+      }).catch((error) => console.warn("[Reservation] Owner notification failed:", error));
+      return reservation;
+    }),
   }),
   admin: router({
     me: adminMenuProcedure.query(({ ctx }) => ctx.user),
     menu: router({
       list: adminMenuProcedure.query(() => listAllMenuItems()),
+      uploadImage: adminMenuProcedure.input(z.object({
+        fileName: z.string().min(1).max(180),
+        contentType: z.enum(["image/jpeg", "image/png", "image/webp"]),
+        base64: z.string().min(1).max(8_000_000),
+      })).mutation(async ({ ctx, input }) => {
+        const safeName = input.fileName.replace(/[^a-zA-Z0-9._-]/g, "-");
+        const bytes = Buffer.from(input.base64, "base64");
+        if (bytes.byteLength > 5 * 1024 * 1024) throw new Error("Image must be 5MB or smaller");
+        return storagePut(`admin/${ctx.user.id}/${safeName}`, bytes, input.contentType);
+      }),
       create: adminMenuProcedure.input(menuItemInput).mutation(({ input }) => createMenuItem(input)),
       update: adminMenuProcedure.input(z.object({ id: z.number().int().positive(), data: menuItemInput.partial() })).mutation(({ input }) => updateMenuItem(input.id, input.data)),
       remove: adminMenuProcedure.input(z.object({ id: z.number().int().positive() })).mutation(({ input }) => deleteMenuItem(input.id)),
