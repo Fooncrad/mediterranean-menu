@@ -10,6 +10,9 @@ import {
   MapPin,
   Menu as MenuIcon,
   Search,
+  ShoppingCart,
+  Minus,
+  Plus,
   Star,
   Utensils,
   X,
@@ -29,15 +32,15 @@ type CategoryKey = "all" | "breakfast" | "mezza" | "mains" | "desserts";
 
 const copy = {
   ar: {
-    navMenu: "القائمة", navStory: "قصتنا", navVisit: "زورونا", reserve: "احجز طاولتك", chooseLanguage: "اختر اللغة",
+    navMenu: "القائمة", navStory: "قصتنا", navVisit: "زورونا", reserve: "احجز طاولتك", chooseLanguage: "اختر اللغة", sortBy: "ترتيب", defaultSort: "الترتيب الافتراضي", priceLow: "السعر: الأقل أولاً", priceHigh: "السعر: الأعلى أولاً", mostPopular: "الأكثر طلباً", addToCart: "إضافة للسلة", cart: "السلة", cartEmpty: "السلة فارغة", total: "الإجمالي", ingredientsLabel: "المكونات", closeDetails: "إغلاق",
     eyebrow: "من مطبخنا إلى مائدتكم", heroTitle: "نكهات من ضفاف المتوسط", heroText: "نطبخ ببطء، نختار بعناية، ونترك للمكونات أن تحكي الحكاية.", explore: "استكشف القائمة", tonight: "قائمة هذا المساء", curated: "مختارات الشيف اليومية", search: "ابحث عن طبق...", all: "كل الأطباق", breakfast: "فطور", mezza: "مقبلات", mains: "أطباق رئيسية", desserts: "حلويات", featured: "الأكثر طلباً", ingredients: "مكونات موسمية، نكهة صادقة", ingredientText: "كل طبق يبدأ من سوق الصباح. خضار طازجة، زيت زيتون بكر، وتوابل نحمصها في مطبخنا.", viewAll: "عرض القائمة كاملة", hours: "نفتح يومياً", address: "شارع البحر، حي الميناء", call: "اتصل بنا", reserveTitle: "احجز طاولتك", name: "الاسم", guests: "عدد الضيوف", date: "التاريخ", time: "الوقت", confirm: "تأكيد الحجز", close: "إغلاق", booked: "تم استلام طلب الحجز", bookedText: "سنتواصل معك قريباً لتأكيد التفاصيل.", order: "أضف للمفضلة", vegan: "نباتي", popular: "مفضل الضيوف", scroll: "مرر للاستكشاف"
   },
   en: {
-    navMenu: "Menu", navStory: "Our story", navVisit: "Visit us", reserve: "Reserve a table", chooseLanguage: "Choose language",
+    navMenu: "Menu", navStory: "Our story", navVisit: "Visit us", reserve: "Reserve a table", chooseLanguage: "Choose language", sortBy: "Sort", defaultSort: "Default order", priceLow: "Price: low to high", priceHigh: "Price: high to low", mostPopular: "Most popular", addToCart: "Add to cart", cart: "Cart", cartEmpty: "Your cart is empty", total: "Total", ingredientsLabel: "Ingredients", closeDetails: "Close",
     eyebrow: "From our kitchen to your table", heroTitle: "Flavours from the Mediterranean", heroText: "We cook slowly, choose thoughtfully, and let the ingredients tell the story.", explore: "Explore menu", tonight: "Tonight's menu", curated: "A daily edit by our chef", search: "Search a dish...", all: "All dishes", breakfast: "Breakfast", mezza: "Mezza", mains: "Mains", desserts: "Desserts", featured: "Guest favourites", ingredients: "Seasonal ingredients, honest flavour", ingredientText: "Every plate starts at the morning market. Fresh produce, extra virgin olive oil, and spices toasted in our kitchen.", viewAll: "View full menu", hours: "Open daily", address: "Sea Street, Port District", call: "Call us", reserveTitle: "Reserve your table", name: "Name", guests: "Guests", date: "Date", time: "Time", confirm: "Confirm reservation", close: "Close", booked: "Reservation request received", bookedText: "We will be in touch shortly to confirm the details.", order: "Add to favourites", vegan: "Vegan", popular: "Guest favourite", scroll: "Scroll to explore"
   },
   fr: {
-    navMenu: "Menu", navStory: "Notre histoire", navVisit: "Nous trouver", reserve: "Réserver une table", chooseLanguage: "Choisir la langue",
+    navMenu: "Menu", navStory: "Notre histoire", navVisit: "Nous trouver", reserve: "Réserver une table", chooseLanguage: "Choisir la langue", sortBy: "Trier", defaultSort: "Ordre par défaut", priceLow: "Prix : croissant", priceHigh: "Prix : décroissant", mostPopular: "Les plus demandés", addToCart: "Ajouter au panier", cart: "Panier", cartEmpty: "Votre panier est vide", total: "Total", ingredientsLabel: "Ingrédients", closeDetails: "Fermer",
     eyebrow: "De notre cuisine à votre table", heroTitle: "Saveurs de la Méditerranée", heroText: "Nous cuisinons lentement, choisissons avec soin et laissons les ingrédients raconter l'histoire.", explore: "Découvrir le menu", tonight: "Menu du soir", curated: "La sélection quotidienne du chef", search: "Rechercher un plat...", all: "Tous les plats", breakfast: "Petit-déjeuner", mezza: "Mezzés", mains: "Plats", desserts: "Desserts", featured: "Les préférés", ingredients: "Ingrédients de saison, goût sincère", ingredientText: "Chaque assiette commence au marché du matin. Produits frais, huile d'olive vierge et épices grillées dans notre cuisine.", viewAll: "Voir le menu complet", hours: "Ouvert tous les jours", address: "Rue de la Mer, quartier du Port", call: "Appelez-nous", reserveTitle: "Réserver votre table", name: "Nom", guests: "Convives", date: "Date", time: "Heure", confirm: "Confirmer", close: "Fermer", booked: "Demande reçue", bookedText: "Nous vous contacterons bientôt pour confirmer les détails.", order: "Ajouter aux favoris", vegan: "Végétal", popular: "Préféré des clients", scroll: "Défiler pour explorer"
   },
 };
@@ -68,6 +71,10 @@ function App() {
   const [reservationGuests, setReservationGuests] = useState("2");
   const [reservationDate, setReservationDate] = useState("");
   const [reservationTime, setReservationTime] = useState("20:00");
+  const [selectedItem, setSelectedItem] = useState<any | null>(null);
+  const [sortMode, setSortMode] = useState<"default" | "priceAsc" | "priceDesc" | "popular">("default");
+  const [cart, setCart] = useState<Record<string, number>>({});
+  const [cartOpen, setCartOpen] = useState(false);
   const t = copy[locale];
   const isArabic = locale === "ar";
   const menuQuery = trpc.menu.list.useQuery();
@@ -78,7 +85,7 @@ function App() {
   const liveMenuItems = menuQuery.data?.length ? menuQuery.data.map((item) => ({
     id: String(item.id), category: item.category, image: item.imageUrl, price: String(item.price), rating: item.rating,
     vegan: Boolean(item.isVegan), popular: Boolean(item.isPopular),
-    ar: [item.nameAr, item.descriptionAr], en: [item.nameEn, item.descriptionEn], fr: [item.nameFr, item.descriptionFr],
+    ar: [item.nameAr, item.descriptionAr], en: [item.nameEn, item.descriptionEn], fr: [item.nameFr, item.descriptionFr], ingredients: locale === "ar" ? ["زيت زيتون بكر", "أعشاب موسمية", "توابل محمصة"] : locale === "fr" ? ["Huile d’olive vierge", "Herbes de saison", "Épices grillées"] : ["Extra virgin olive oil", "Seasonal herbs", "Toasted spices"],
   })) : menuItems;
 
   const filteredItems = useMemo(() => liveMenuItems.filter((item) => {
@@ -86,6 +93,12 @@ function App() {
     const [title, description] = item[locale];
     return matchesCategory && `${title} ${description}`.toLowerCase().includes(query.toLowerCase());
   }), [activeCategory, locale, query, liveMenuItems]);
+  const sortedItems = useMemo(() => [...filteredItems].sort((a, b) => sortMode === "priceAsc" ? Number(a.price) - Number(b.price) : sortMode === "priceDesc" ? Number(b.price) - Number(a.price) : sortMode === "popular" ? Number(b.popular) - Number(a.popular) || Number(b.rating) - Number(a.rating) : 0), [filteredItems, sortMode]);
+  const cartItems = liveMenuItems.filter((item) => cart[item.id]);
+  const cartCount = Object.values(cart).reduce((sum, quantity) => sum + quantity, 0);
+  const cartTotal = cartItems.reduce((sum, item) => sum + Number(item.price) * (cart[item.id] || 0), 0);
+  const addToCart = (id: string) => setCart((current) => ({ ...current, [id]: (current[id] || 0) + 1 }));
+  const changeCartQuantity = (id: string, delta: number) => setCart((current) => { const next = Math.max(0, (current[id] || 0) + delta); const updated = { ...current }; if (next) updated[id] = next; else delete updated[id]; return updated; });
 
   const toggleFavourite = (id: string) => setFavourites((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
 
@@ -131,15 +144,15 @@ function App() {
           </div>
           <div className="menu-toolbar">
             <div className="category-tabs">{categories.map(({ key, label }) => <button key={key} className={activeCategory === key ? "active" : ""} onClick={() => setActiveCategory(key)}>{t[label]}</button>)}</div>
-            <label className="search-field"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t.search} /></label>
+            <div className="menu-tools"><label className="sort-field">{t.sortBy}<select value={sortMode} onChange={(event) => setSortMode(event.target.value as typeof sortMode)}><option value="default">{t.defaultSort}</option><option value="priceAsc">{t.priceLow}</option><option value="priceDesc">{t.priceHigh}</option><option value="popular">{t.mostPopular}</option></select></label><label className="search-field"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t.search} /></label></div>
           </div>
           <div className="menu-grid">
-            {filteredItems.map((item, index) => {
+            {sortedItems.map((item, index) => {
               const [title, description] = item[locale];
               const liked = favourites.includes(item.id);
-              return <article className="dish-card" key={item.id} style={{ "--delay": `${index * 70}ms` } as React.CSSProperties}>
-                <div className="dish-image-wrap"><img src={item.image} alt={title} /><div className="image-overlay" /><button className={`heart-button ${liked ? "liked" : ""}`} onClick={() => toggleFavourite(item.id)} aria-label={t.order}><Heart size={18} fill={liked ? "currentColor" : "none"} /></button>{item.popular && <span className="popular-tag"><Star size={12} fill="currentColor" />{t.popular}</span>}</div>
-                <div className="dish-content"><div className="dish-title-row"><h3>{title}</h3><span className="price"><small>SAR</small> {item.price}</span></div><p>{description}</p><div className="dish-meta"><span className="rating"><Star size={13} fill="currentColor" /> {item.rating}</span>{item.vegan && <span className="vegan-tag"><Leaf size={13} /> {t.vegan}</span>}<button className="tiny-action" onClick={() => toggleFavourite(item.id)}>{liked ? <Check size={14} /> : <Heart size={14} />} {liked ? (isArabic ? "محفوظ" : locale === "fr" ? "Ajouté" : "Saved") : t.order}</button></div></div>
+              return <article className="dish-card" key={item.id} style={{ "--delay": `${index * 70}ms` } as React.CSSProperties} onClick={() => setSelectedItem(item)}>
+                <div className="dish-image-wrap"><img src={item.image} alt={title} /><div className="image-overlay" /><button className={`heart-button ${liked ? "liked" : ""}`} onClick={(event) => { event.stopPropagation(); toggleFavourite(item.id); }} aria-label={t.order}><Heart size={18} fill={liked ? "currentColor" : "none"} /></button>{item.popular && <span className="popular-tag"><Star size={12} fill="currentColor" />{t.popular}</span>}<span className="image-hint">{locale === "ar" ? "عرض التفاصيل" : locale === "fr" ? "Voir les détails" : "View details"}</span></div>
+                <div className="dish-content"><div className="dish-title-row"><h3>{title}</h3><span className="price"><small>SAR</small> {item.price}</span></div><p>{description}</p><div className="dish-meta"><span className="rating"><Star size={13} fill="currentColor" /> {item.rating}</span>{item.vegan && <span className="vegan-tag"><Leaf size={13} /> {t.vegan}</span>}<button className="tiny-action" onClick={(event) => { event.stopPropagation(); toggleFavourite(item.id); }}>{liked ? <Check size={14} /> : <Heart size={14} />} {liked ? (isArabic ? "محفوظ" : locale === "fr" ? "Ajouté" : "Saved") : t.order}</button></div><button className="add-cart-button" onClick={(event) => { event.stopPropagation(); addToCart(item.id); }}>{t.addToCart}<ShoppingCart size={15} /></button></div>
               </article>;
             })}
           </div>
@@ -149,6 +162,10 @@ function App() {
 
         <section className="visit-section" id="visit"><div className="visit-card"><div><div className="section-kicker">{locale === "ar" ? "أهلاً بكم" : locale === "fr" ? "Bienvenue" : "Welcome in"}</div><h2>{locale === "ar" ? "نلتقي حول المائدة" : locale === "fr" ? "À bientôt autour de la table" : "Meet us around the table"}</h2></div><div className="visit-details"><span><Clock3 size={17} /> {t.hours}<b>12:00 — 00:00</b></span><span><MapPin size={17} /> {t.address}<b>{locale === "ar" ? "الخريطة والاتجاهات" : locale === "fr" ? "Carte & itinéraire" : "Map & directions"} <ArrowUpRight size={14} /></b></span></div><button className="primary-cta light" onClick={() => { setSubmitted(false); setShowBooking(true); }}>{t.reserve}<ArrowUpRight size={18} /></button></div></section>
       </main>
+
+      {selectedItem && <div className="modal-backdrop dish-detail-backdrop" role="presentation" onClick={() => setSelectedItem(null)}><div className="dish-detail-modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setSelectedItem(null)} aria-label={t.closeDetails}><X size={20} /></button><img className="detail-image" src={selectedItem.image} alt={selectedItem[locale][0]} /><div className="detail-body"><span className="section-kicker">{selectedItem.popular ? t.popular : t.tonight}</span><div className="detail-title-row"><h2>{selectedItem[locale][0]}</h2><span className="price"><small>SAR</small> {selectedItem.price}</span></div><p>{selectedItem[locale][1]}</p><h3>{t.ingredientsLabel}</h3><div className="ingredient-pills">{(selectedItem.ingredients || ["Extra virgin olive oil", "Seasonal herbs", "Toasted spices"]).map((ingredient: string) => <span key={ingredient}>{ingredient}</span>)}</div><button className="primary-cta detail-add" onClick={() => { addToCart(selectedItem.id); setSelectedItem(null); }}>{t.addToCart}<ShoppingCart size={17} /></button></div></div></div>}
+      <button className={`floating-cart ${cartCount ? "has-items" : ""}`} onClick={() => setCartOpen(true)} aria-label={t.cart}><ShoppingCart size={21} /><span>{cartCount}</span></button>
+      {cartOpen && <div className="modal-backdrop cart-backdrop" role="presentation" onClick={() => setCartOpen(false)}><aside className="cart-drawer" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}><div className="cart-header"><div><span className="section-kicker">OLIVE & CLAY</span><h2>{t.cart}</h2></div><button className="modal-close" onClick={() => setCartOpen(false)} aria-label={t.close}><X size={20} /></button></div>{cartItems.length ? <><div className="cart-list">{cartItems.map((item) => <div className="cart-line" key={item.id}><img src={item.image} alt="" /><div className="cart-line-info"><strong>{item[locale][0]}</strong><small><span className="price"><small>SAR</small> {item.price}</span> × {cart[item.id]}</small></div><div className="quantity-controls"><button onClick={() => changeCartQuantity(item.id, -1)}><Minus size={13} /></button><b>{cart[item.id]}</b><button onClick={() => changeCartQuantity(item.id, 1)}><Plus size={13} /></button></div></div>)}</div><div className="cart-total"><span>{t.total}</span><strong><small>SAR</small> {cartTotal}</strong></div><button className="primary-cta cart-submit" onClick={() => { setCartOpen(false); setSubmitted(false); setShowBooking(true); }}>{t.reserve}<ArrowUpRight size={17} /></button></> : <div className="cart-empty"><ShoppingCart size={32} /><p>{t.cartEmpty}</p><button className="text-link" onClick={() => setCartOpen(false)}>{t.explore}</button></div>}</aside></div>}
 
       <footer className="footer"><a className="brand footer-brand" href="#top"><span className="brand-mark"><Leaf size={18} strokeWidth={1.6} /></span><span><strong>Olive</strong><em>& Clay</em></span></a><span>© 2024 Olive & Clay</span><a href="/admin">Admin</a><a href="tel:+966555555555">{t.call} <ArrowUpRight size={14} /></a></footer>
 
