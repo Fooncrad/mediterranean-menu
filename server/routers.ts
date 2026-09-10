@@ -36,6 +36,7 @@ const menuItemInput = z.object({
 });
 
 const adminMenuProcedure = adminProcedure;
+const deliveryFees = { central: 10, north: 15, east: 18, west: 18, south: 20, outside: 30 } as const;
 
 export const appRouter = router({
   system: systemRouter,
@@ -73,18 +74,20 @@ export const appRouter = router({
       customerPhone: z.string().max(40).optional(),
       roomNumber: z.string().max(40).optional(),
       address: z.string().max(1000).optional(),
+      deliveryZone: z.enum(["central", "north", "east", "west", "south", "outside"]).optional(),
       reservationAt: z.coerce.date().optional(),
       guestCount: z.number().int().min(1).max(30).optional(),
       items: z.array(z.object({ id: z.string(), title: z.string().max(180), quantity: z.number().int().min(1).max(99), price: z.number().int().min(0) })).min(1),
       total: z.number().int().min(0).max(999999),
     })).mutation(async ({ input }) => {
       let reservationId: number | undefined;
+      const deliveryFee = input.orderType === "delivery" && input.deliveryZone ? deliveryFees[input.deliveryZone] : 0;
       if (input.orderType === "reservation" && input.reservationAt) {
         const reservation = await createReservation({ guestName: input.customerName, guestCount: input.guestCount ?? 2, reservationAt: input.reservationAt });
         reservationId = reservation?.id;
       }
-      const order = await createOrder({ orderType: input.orderType, customerName: input.customerName, customerPhone: input.customerPhone, roomNumber: input.roomNumber, address: input.address, reservationId, itemsJson: JSON.stringify(input.items), total: input.total });
-      await notifyOwner({ title: "طلب جديد في Olive & Clay", content: `العميل: ${input.customerName}\nنوع الطلب: ${input.orderType}\nالإجمالي: ${input.total} SAR` }).catch((error) => console.warn("[Order] Owner notification failed:", error));
+      const order = await createOrder({ orderType: input.orderType, customerName: input.customerName, customerPhone: input.customerPhone, roomNumber: input.roomNumber, address: input.address, deliveryZone: input.deliveryZone, deliveryFee, reservationId, itemsJson: JSON.stringify(input.items), total: input.total + deliveryFee });
+      await notifyOwner({ title: "طلب جديد في Olive & Clay", content: `العميل: ${input.customerName}\nنوع الطلب: ${input.orderType}\nرسوم التوصيل: ${deliveryFee} SAR\nالإجمالي: ${input.total + deliveryFee} SAR` }).catch((error) => console.warn("[Order] Owner notification failed:", error));
       return order;
     }),
   }),

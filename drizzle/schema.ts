@@ -48,6 +48,8 @@ export const orders = mysqlTable("orders", {
   customerPhone: varchar("customerPhone", { length: 40 }),
   roomNumber: varchar("roomNumber", { length: 40 }),
   address: text("address"),
+  deliveryZone: varchar("deliveryZone", { length: 100 }),
+  deliveryFee: int("deliveryFee").default(0).notNull(),
   reservationId: int("reservationId"),
   itemsJson: text("itemsJson").notNull(),
   total: int("total").notNull(),
