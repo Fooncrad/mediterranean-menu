@@ -99,7 +99,7 @@ function App() {
           <span><strong>Olive</strong><em>& Clay</em></span>
         </a>
         <nav className={`desktop-nav ${menuOpen ? "is-open" : ""}`}>
-          <a href="#menu">{t.navMenu}</a><a href="#story">{t.navStory}</a><a href="#visit">{t.navVisit}</a>
+          <a href="#menu">{t.navMenu}</a><a href="#visit">{t.navVisit}</a>
         </nav>
         <div className="top-actions">
           <label className="language-select"><span>{t.chooseLanguage}</span><select value={locale} onChange={(event) => switchLocale(event.target.value as Locale)} aria-label={t.chooseLanguage}><option value="ar">العربية</option><option value="en">English</option><option value="fr">Français</option></select><ChevronDown size={13} /></label>
@@ -145,11 +145,6 @@ function App() {
           </div>
           {filteredItems.length === 0 && <div className="empty-state">{locale === "ar" ? "لم نجد طبقاً يطابق بحثك." : locale === "fr" ? "Aucun plat ne correspond à votre recherche." : "No dishes match your search."}</div>}
           <div className="menu-footer"><a href="#menu" className="text-link">{t.viewAll}<ArrowUpRight size={17} /></a><span className="footer-note"><span className="dot" /> {locale === "ar" ? "خيارات نباتية متاحة" : locale === "fr" ? "Options végétales disponibles" : "Plant-based options available"}</span></div>
-        </section>
-
-        <section className="story-section" id="story">
-          <div className="story-image"><img src={ASSET.flatbread} alt="Fresh Mediterranean ingredients" /><div className="story-image-caption"><span>01</span><span>{locale === "ar" ? "من السوق" : locale === "fr" ? "Du marché" : "From the market"}</span></div></div>
-          <div className="story-copy"><div className="section-kicker">{locale === "ar" ? "فلسفتنا" : locale === "fr" ? "Notre philosophie" : "Our philosophy"}</div><h2>{t.ingredients}</h2><p>{t.ingredientText}</p><div className="ingredient-list"><span>01 <b>{locale === "ar" ? "زيت الزيتون البكر" : locale === "fr" ? "Huile d'olive vierge" : "Extra virgin olive oil"}</b></span><span>02 <b>{locale === "ar" ? "أعشاب من الحديقة" : locale === "fr" ? "Herbes du jardin" : "Garden herbs"}</b></span><span>03 <b>{locale === "ar" ? "حبوب محلية" : locale === "fr" ? "Céréales locales" : "Local grains"}</b></span></div></div>
         </section>
 
         <section className="visit-section" id="visit"><div className="visit-card"><div><div className="section-kicker">{locale === "ar" ? "أهلاً بكم" : locale === "fr" ? "Bienvenue" : "Welcome in"}</div><h2>{locale === "ar" ? "نلتقي حول المائدة" : locale === "fr" ? "À bientôt autour de la table" : "Meet us around the table"}</h2></div><div className="visit-details"><span><Clock3 size={17} /> {t.hours}<b>12:00 — 00:00</b></span><span><MapPin size={17} /> {t.address}<b>{locale === "ar" ? "الخريطة والاتجاهات" : locale === "fr" ? "Carte & itinéraire" : "Map & directions"} <ArrowUpRight size={14} /></b></span></div><button className="primary-cta light" onClick={() => { setSubmitted(false); setShowBooking(true); }}>{t.reserve}<ArrowUpRight size={18} /></button></div></section>
