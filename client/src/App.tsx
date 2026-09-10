@@ -27,15 +27,15 @@ type CategoryKey = "all" | "breakfast" | "mezza" | "mains" | "desserts";
 
 const copy = {
   ar: {
-    navMenu: "القائمة", navStory: "قصتنا", navVisit: "زورونا", reserve: "احجز طاولتك",
+    navMenu: "القائمة", navStory: "قصتنا", navVisit: "زورونا", reserve: "احجز طاولتك", chooseLanguage: "اختر اللغة",
     eyebrow: "من مطبخنا إلى مائدتكم", heroTitle: "نكهات من ضفاف المتوسط", heroText: "نطبخ ببطء، نختار بعناية، ونترك للمكونات أن تحكي الحكاية.", explore: "استكشف القائمة", tonight: "قائمة هذا المساء", curated: "مختارات الشيف اليومية", search: "ابحث عن طبق...", all: "كل الأطباق", breakfast: "فطور", mezza: "مقبلات", mains: "أطباق رئيسية", desserts: "حلويات", featured: "الأكثر طلباً", ingredients: "مكونات موسمية، نكهة صادقة", ingredientText: "كل طبق يبدأ من سوق الصباح. خضار طازجة، زيت زيتون بكر، وتوابل نحمصها في مطبخنا.", viewAll: "عرض القائمة كاملة", hours: "نفتح يومياً", address: "شارع البحر، حي الميناء", call: "اتصل بنا", reserveTitle: "احجز طاولتك", name: "الاسم", guests: "عدد الضيوف", date: "التاريخ", time: "الوقت", confirm: "تأكيد الحجز", close: "إغلاق", booked: "تم استلام طلب الحجز", bookedText: "سنتواصل معك قريباً لتأكيد التفاصيل.", order: "أضف للمفضلة", vegan: "نباتي", popular: "مفضل الضيوف", scroll: "مرر للاستكشاف"
   },
   en: {
-    navMenu: "Menu", navStory: "Our story", navVisit: "Visit us", reserve: "Reserve a table",
+    navMenu: "Menu", navStory: "Our story", navVisit: "Visit us", reserve: "Reserve a table", chooseLanguage: "Choose language",
     eyebrow: "From our kitchen to your table", heroTitle: "Flavours from the Mediterranean", heroText: "We cook slowly, choose thoughtfully, and let the ingredients tell the story.", explore: "Explore menu", tonight: "Tonight's menu", curated: "A daily edit by our chef", search: "Search a dish...", all: "All dishes", breakfast: "Breakfast", mezza: "Mezza", mains: "Mains", desserts: "Desserts", featured: "Guest favourites", ingredients: "Seasonal ingredients, honest flavour", ingredientText: "Every plate starts at the morning market. Fresh produce, extra virgin olive oil, and spices toasted in our kitchen.", viewAll: "View full menu", hours: "Open daily", address: "Sea Street, Port District", call: "Call us", reserveTitle: "Reserve your table", name: "Name", guests: "Guests", date: "Date", time: "Time", confirm: "Confirm reservation", close: "Close", booked: "Reservation request received", bookedText: "We will be in touch shortly to confirm the details.", order: "Add to favourites", vegan: "Vegan", popular: "Guest favourite", scroll: "Scroll to explore"
   },
   fr: {
-    navMenu: "Menu", navStory: "Notre histoire", navVisit: "Nous trouver", reserve: "Réserver une table",
+    navMenu: "Menu", navStory: "Notre histoire", navVisit: "Nous trouver", reserve: "Réserver une table", chooseLanguage: "Choisir la langue",
     eyebrow: "De notre cuisine à votre table", heroTitle: "Saveurs de la Méditerranée", heroText: "Nous cuisinons lentement, choisissons avec soin et laissons les ingrédients raconter l'histoire.", explore: "Découvrir le menu", tonight: "Menu du soir", curated: "La sélection quotidienne du chef", search: "Rechercher un plat...", all: "Tous les plats", breakfast: "Petit-déjeuner", mezza: "Mezzés", mains: "Plats", desserts: "Desserts", featured: "Les préférés", ingredients: "Ingrédients de saison, goût sincère", ingredientText: "Chaque assiette commence au marché du matin. Produits frais, huile d'olive vierge et épices grillées dans notre cuisine.", viewAll: "Voir le menu complet", hours: "Ouvert tous les jours", address: "Rue de la Mer, quartier du Port", call: "Appelez-nous", reserveTitle: "Réserver votre table", name: "Nom", guests: "Convives", date: "Date", time: "Heure", confirm: "Confirmer", close: "Fermer", booked: "Demande reçue", bookedText: "Nous vous contacterons bientôt pour confirmer les détails.", order: "Ajouter aux favoris", vegan: "Végétal", popular: "Préféré des clients", scroll: "Défiler pour explorer"
   },
 };
@@ -83,9 +83,7 @@ function App() {
           <a href="#menu">{t.navMenu}</a><a href="#story">{t.navStory}</a><a href="#visit">{t.navVisit}</a>
         </nav>
         <div className="top-actions">
-          <div className="language-switcher" aria-label="Language selector">
-            {(["ar", "en", "fr"] as Locale[]).map((item) => <button key={item} className={locale === item ? "active" : ""} onClick={() => switchLocale(item)}>{item.toUpperCase()}</button>)}
-          </div>
+          <label className="language-select"><span>{t.chooseLanguage}</span><select value={locale} onChange={(event) => switchLocale(event.target.value as Locale)} aria-label={t.chooseLanguage}><option value="ar">العربية</option><option value="en">English</option><option value="fr">Français</option></select><ChevronDown size={13} /></label>
           <button className="reserve-button" onClick={() => { setSubmitted(false); setShowBooking(true); }}>{t.reserve}<ArrowUpRight size={16} /></button>
           <button className="menu-toggle" onClick={() => setMenuOpen(!menuOpen)} aria-label="Toggle navigation">{menuOpen ? <X size={21} /> : <MenuIcon size={21} />}</button>
         </div>
@@ -150,4 +148,3 @@ export default App;
 // Keep the type available for inline CSS custom properties without adding another dependency.
 
 declare global { namespace React { interface CSSProperties { [key: `--${string}`]: string | number; } } }
-
