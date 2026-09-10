@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { startLogin } from "@/const";
-import { Check, Edit3, Filter, ImagePlus, LayoutDashboard, PackageCheck, Plus, Save, ShoppingBag, Trash2, UploadCloud, Utensils, X } from "lucide-react";
+import { BellRing, Check, Edit3, Filter, ImagePlus, LayoutDashboard, PackageCheck, Plus, Printer, QrCode, Save, ShoppingBag, Trash2, UploadCloud, Utensils, Volume2, VolumeX, X } from "lucide-react";
 
 const emptyForm = {
   category: "mains" as "breakfast" | "mezza" | "mains" | "desserts",
@@ -12,7 +12,7 @@ const emptyForm = {
   nameAr: "", descriptionAr: "", nameEn: "", descriptionEn: "", nameFr: "", descriptionFr: "",
 };
 type FormState = typeof emptyForm;
-type AdminTab = "menu" | "orders" | "reservations";
+type AdminTab = "menu" | "orders" | "reservations" | "tables";
 
 const labelMap = { breakfast: "فطور", mezza: "مقبلات", mains: "أطباق رئيسية", desserts: "حلويات" };
 const orderTypeLabels = { table: "على الطاولة", reservation: "مع الحجز", takeaway: "سفري", delivery: "توصيل", room_service: "خدمة الغرف" };
@@ -23,6 +23,27 @@ const adminCopy = {
   fr: { title: "Tableau de bord", desc: "Gérez le menu, les commandes et les réservations.", dishes: "Gérer les plats", reservations: "Réservations", orders: "Commandes", published: "Plats publiés", pending: "Réservations en attente", account: "Statut du compte", add: "Ajouter un plat", filter: "Filtrer par catégorie", all: "Tous les plats" },
 };
 
+function playKitchenChime() {
+  const AudioContextClass = window.AudioContext;
+  const context = new AudioContextClass();
+  [0, 0.22].forEach((delay, index) => {
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    oscillator.type = "sine";
+    oscillator.frequency.value = index === 0 ? 880 : 1175;
+    gain.gain.setValueAtTime(0.0001, context.currentTime + delay);
+    gain.gain.exponentialRampToValueAtTime(0.25, context.currentTime + delay + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + delay + 0.25);
+    oscillator.connect(gain); gain.connect(context.destination);
+    oscillator.start(context.currentTime + delay); oscillator.stop(context.currentTime + delay + 0.28);
+  });
+  window.setTimeout(() => context.close(), 800);
+}
+
+function escapeHtml(value: string) {
+  return value.replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character] || character);
+}
+
 export default function Admin() {
   const { user, loading } = useAuth();
   const [activeTab, setActiveTab] = useState<AdminTab>("menu");
@@ -32,11 +53,15 @@ export default function Admin() {
   const [message, setMessage] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<"all" | FormState["category"]>("all");
   const [adminLocale, setAdminLocale] = useState<"ar" | "en" | "fr">("ar");
+  const [soundEnabled, setSoundEnabled] = useState(false);
+  const [newOrderAlert, setNewOrderAlert] = useState<number | null>(null);
+  const [tableCount, setTableCount] = useState(20);
+  const lastOrderIdRef = useRef<number | null>(null);
   const copy = adminCopy[adminLocale];
   const enabled = !!user && user.role === "admin";
   const menuQuery = trpc.admin.menu.list.useQuery(undefined, { enabled });
   const reservationQuery = trpc.admin.reservations.list.useQuery(undefined, { enabled });
-  const orderQuery = trpc.admin.orders.list.useQuery(undefined, { enabled });
+  const orderQuery = trpc.admin.orders.list.useQuery(undefined, { enabled, refetchInterval: 5000 });
   const utils = trpc.useUtils();
   const closeForm = () => { setFormOpen(false); setEditing(null); setForm(emptyForm); };
   const createMutation = trpc.admin.menu.create.useMutation({ onSuccess: () => { utils.admin.menu.list.invalidate(); closeForm(); setMessage("تمت إضافة الطبق بنجاح"); } });
@@ -47,11 +72,41 @@ export default function Admin() {
   const orderStatusMutation = trpc.admin.orders.updateStatus.useMutation({ onSuccess: () => { utils.admin.orders.list.invalidate(); setMessage("تم تحديث حالة الطلب"); } });
 
   useEffect(() => { if (!message) return; const timer = window.setTimeout(() => setMessage(""), 3200); return () => window.clearTimeout(timer); }, [message]);
+  useEffect(() => {
+    if (!orderQuery.data?.length) return;
+    const latestId = Math.max(...orderQuery.data.map((order) => order.id));
+    if (lastOrderIdRef.current === null) { lastOrderIdRef.current = latestId; return; }
+    if (latestId > lastOrderIdRef.current) {
+      lastOrderIdRef.current = latestId;
+      setNewOrderAlert(latestId);
+      if (soundEnabled) playKitchenChime();
+    }
+  }, [orderQuery.data, soundEnabled]);
   const reservations = reservationQuery.data ?? [];
   const orders = orderQuery.data ?? [];
   const pendingCount = reservations.filter((item) => item.status === "pending").length;
   const newOrdersCount = orders.filter((item) => item.status === "new").length;
   const filteredMenuItems = useMemo(() => (menuQuery.data ?? []).filter((item) => categoryFilter === "all" || item.category === categoryFilter), [menuQuery.data, categoryFilter]);
+  const enableKitchenSound = () => { playKitchenChime(); setSoundEnabled(true); setMessage("تم تفعيل صوت تنبيهات المطبخ"); };
+  const printInvoice = (order: NonNullable<typeof orderQuery.data>[number]) => {
+    let lines: Array<{ title: string; quantity: number; price: number; addOns?: Array<{ name: string; price: number }> }> = [];
+    try { lines = JSON.parse(order.itemsJson); } catch { lines = []; }
+    const subtotal = order.total - order.deliveryFee - order.taxAmount;
+    const popup = window.open("", "_blank", "width=760,height=900");
+    if (!popup) return setMessage("اسمح بالنوافذ المنبثقة لطباعة الفاتورة");
+    const rows = lines.map((line) => `<tr><td>${line.title}${line.addOns?.length ? `<small>${line.addOns.map((addOn) => addOn.name).join("، ")}</small>` : ""}</td><td>${line.quantity}</td><td>${line.price} ر.س</td><td>${line.price * line.quantity} ر.س</td></tr>`).join("");
+    popup.document.write(`<!doctype html><html dir="rtl"><head><meta charset="utf-8"><title>فاتورة #${order.id}</title><style>body{font-family:Arial,sans-serif;color:#173c36;padding:36px;max-width:720px;margin:auto}header{text-align:center;border-bottom:3px solid #e76f51;padding-bottom:18px}h1{margin:8px 0}small{display:block;color:#777;margin-top:4px}section{display:flex;justify-content:space-between;margin:22px 0;padding:14px;background:#fff8ec}table{width:100%;border-collapse:collapse}th,td{padding:12px 8px;border-bottom:1px solid #ddd;text-align:right}th{background:#173c36;color:white}.totals{margin-top:20px;margin-right:auto;width:310px}.totals div{display:flex;justify-content:space-between;padding:8px}.grand{font-size:19px;font-weight:bold;border-top:2px solid #e76f51}.vat{margin-top:24px;text-align:center;color:#666;font-size:12px}@media print{button{display:none}}</style></head><body><header><b>Olive & Clay</b><h1>فاتورة ضريبية</h1><span>رقم الفاتورة: #${order.id}</span></header><section><div><b>العميل</b><small>${order.customerName}</small><small>${order.customerPhone || "—"}</small></div><div><b>نوع الطلب</b><small>${orderTypeLabels[order.orderType]}</small><small>${order.tableNumber ? `طاولة ${order.tableNumber}` : ""}</small></div><div><b>التاريخ</b><small>${new Date(order.createdAt).toLocaleString("ar-SA")}</small></div></section><table><thead><tr><th>الصنف</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th></tr></thead><tbody>${rows}</tbody></table><div class="totals"><div><span>المجموع الفرعي</span><b>${subtotal} ر.س</b></div><div><span>رسوم التوصيل</span><b>${order.deliveryFee} ر.س</b></div><div><span>ضريبة القيمة المضافة 15%</span><b>${order.taxAmount} ر.س</b></div><div class="grand"><span>الإجمالي شامل الضريبة</span><b>${order.total} ر.س</b></div></div><p class="vat">فاتورة ضريبية مبسطة — شكرًا لاختياركم Olive & Clay</p></body></html>`);
+    popup.document.close(); popup.focus(); window.setTimeout(() => popup.print(), 250);
+  };
+  const tableUrl = (number: number) => `${window.location.origin}/?table=${number}`;
+  const printTableQr = (number: number) => {
+    const url = tableUrl(number);
+    const qr = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(url)}`;
+    const popup = window.open("", "_blank", "width=620,height=760");
+    if (!popup) return setMessage("اسمح بالنوافذ المنبثقة لطباعة رمز الطاولة");
+    popup.document.write(`<!doctype html><html dir="rtl"><head><meta charset="utf-8"><title>QR طاولة ${number}</title><style>body{font-family:Arial;text-align:center;color:#173c36;padding:40px}h1{font-size:42px;margin:10px}p{color:#666}img{width:360px;height:360px;margin:25px;border:14px solid white;box-shadow:0 8px 30px #0002}.brand{color:#e76f51;font-weight:bold;letter-spacing:2px}@media print{button{display:none}}</style></head><body><div class="brand">OLIVE & CLAY</div><h1>الطاولة ${number}</h1><p>امسح الرمز لعرض القائمة والطلب مباشرة</p><img src="${qr}" onload="setTimeout(()=>window.print(),300)" /><small>${url}</small></body></html>`);
+    popup.document.close(); popup.focus();
+  };
 
   const openCreate = () => { setForm(emptyForm); setEditing(null); setFormOpen(true); };
   const openEdit = (item: NonNullable<typeof menuQuery.data>[number]) => {
@@ -75,14 +130,16 @@ export default function Admin() {
   if (!user) return <div className="admin-auth-wall"><div className="admin-auth-card"><div className="admin-brand-mark"><Utensils size={21} /></div><span className="admin-kicker">Olive & Clay</span><h1>لوحة الإدارة</h1><p>سجّل الدخول للوصول إلى إدارة القائمة والطلبات والحجوزات.</p><button className="admin-primary" onClick={() => startLogin()}>تسجيل الدخول</button></div></div>;
   if (user.role !== "admin") return <div className="admin-auth-wall"><div className="admin-auth-card"><div className="admin-brand-mark"><X size={21} /></div><span className="admin-kicker">Access denied</span><h1>لا تملك صلاحية الأدمن</h1><p>هذا الحساب مسجل كحساب مستخدم عادي.</p><a className="admin-secondary" href="/">العودة إلى الموقع</a></div></div>;
 
-  return <DashboardLayout><div className="admin-page" dir={adminLocale === "ar" ? "rtl" : "ltr"} lang={adminLocale}>
-    <header className="admin-header"><div><span className="admin-kicker">OLIVE & CLAY / ADMIN</span><h1>{copy.title}</h1><p>{copy.desc}</p></div><div className="admin-header-actions"><label className="admin-language-picker">{adminLocale === "ar" ? "اللغة" : "Language"}<select value={adminLocale} onChange={(event) => setAdminLocale(event.target.value as "ar" | "en" | "fr")}><option value="ar">العربية</option><option value="en">English</option><option value="fr">Français</option></select></label><a className="admin-view-site" href="/">عرض الموقع <LayoutDashboard size={16} /></a></div></header>
+  return <DashboardLayout><div className={`admin-page ${newOrderAlert ? "has-new-order" : ""}`} dir={adminLocale === "ar" ? "rtl" : "ltr"} lang={adminLocale}>{newOrderAlert && <div className="kitchen-alert"><BellRing size={22} /><div><strong>طلب جديد وصل إلى المطبخ!</strong><small>الطلب رقم #{newOrderAlert} بانتظار التأكيد</small></div><button onClick={() => { setActiveTab("orders"); setNewOrderAlert(null); }}>عرض الطلب</button><button className="alert-close" onClick={() => setNewOrderAlert(null)}><X size={16} /></button></div>}
+    <header className="admin-header"><div><span className="admin-kicker">OLIVE & CLAY / ADMIN</span><h1>{copy.title}</h1><p>{copy.desc}</p></div><div className="admin-header-actions"><button className={`sound-toggle ${soundEnabled ? "enabled" : ""}`} onClick={() => soundEnabled ? setSoundEnabled(false) : enableKitchenSound()}>{soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}{soundEnabled ? "الصوت مفعل" : "تفعيل صوت الطلبات"}</button><label className="admin-language-picker">{adminLocale === "ar" ? "اللغة" : "Language"}<select value={adminLocale} onChange={(event) => setAdminLocale(event.target.value as "ar" | "en" | "fr")}><option value="ar">العربية</option><option value="en">English</option><option value="fr">Français</option></select></label><a className="admin-view-site" href="/">عرض الموقع <LayoutDashboard size={16} /></a></div></header>
     <section className="admin-stats"><div className="admin-stat"><span>{copy.published}</span><strong>{menuQuery.data?.filter((item) => item.isAvailable).length ?? 0}</strong><small>من القائمة الحالية</small></div><div className="admin-stat"><span>الطلبات الجديدة</span><strong>{newOrdersCount}</strong><small>بانتظار بدء التجهيز</small></div><div className="admin-stat"><span>{copy.pending}</span><strong>{pendingCount}</strong><small>بانتظار المراجعة</small></div></section>
-    <div className="admin-tabs"><button className={activeTab === "menu" ? "active" : ""} onClick={() => setActiveTab("menu")}><Utensils size={16} /> {copy.dishes}</button><button className={activeTab === "orders" ? "active" : ""} onClick={() => setActiveTab("orders")}><ShoppingBag size={16} /> {copy.orders}{newOrdersCount > 0 && <b>{newOrdersCount}</b>}</button><button className={activeTab === "reservations" ? "active" : ""} onClick={() => setActiveTab("reservations")}><LayoutDashboard size={16} /> {copy.reservations}{pendingCount > 0 && <b>{pendingCount}</b>}</button></div>
+    <div className="admin-tabs"><button className={activeTab === "menu" ? "active" : ""} onClick={() => setActiveTab("menu")}><Utensils size={16} /> {copy.dishes}</button><button className={activeTab === "orders" ? "active" : ""} onClick={() => setActiveTab("orders")}><ShoppingBag size={16} /> {copy.orders}{newOrdersCount > 0 && <b>{newOrdersCount}</b>}</button><button className={activeTab === "reservations" ? "active" : ""} onClick={() => setActiveTab("reservations")}><LayoutDashboard size={16} /> {copy.reservations}{pendingCount > 0 && <b>{pendingCount}</b>}</button><button className={activeTab === "tables" ? "active" : ""} onClick={() => setActiveTab("tables")}><QrCode size={16} /> رموز الطاولات</button></div>
 
     {activeTab === "menu" && <section className="admin-panel"><div className="panel-heading"><div><span className="admin-kicker">MENU CONTENT</span><h2>الأطباق</h2></div><button className="admin-primary compact" onClick={openCreate}><Plus size={16} /> {copy.add}</button></div><div className="admin-filter-bar"><span><Filter size={15} /> {copy.filter}</span><div>{(["all", "breakfast", "mezza", "mains", "desserts"] as const).map((category) => <button key={category} className={categoryFilter === category ? "active" : ""} onClick={() => setCategoryFilter(category)}>{category === "all" ? copy.all : labelMap[category]}</button>)}</div><small>{filteredMenuItems.length} طبق</small></div>{menuQuery.isLoading ? <div className="admin-empty">جاري التحميل...</div> : <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>الطبق</th><th>القسم</th><th>السعر</th><th>الحالة</th><th /></tr></thead><tbody>{filteredMenuItems.map((item) => <tr key={item.id}><td><div className="table-item"><img src={item.imageUrl} alt="" /><span><strong>{item.nameAr}</strong><small>{item.nameEn}</small></span></div></td><td><span className="category-chip">{labelMap[item.category]}</span></td><td>{item.discountPrice ? <><strong>{item.discountPrice} SAR</strong><small className="old-price">{item.price} SAR</small></> : `${item.price} SAR`}</td><td><span className={`availability ${item.isAvailable ? "on" : "off"}`}>{item.isAvailable ? "ظاهر" : "مخفي"}</span></td><td><div className="row-actions"><button onClick={() => openEdit(item)}><Edit3 size={16} /></button><button onClick={() => window.confirm("هل تريد حذف هذا الطبق؟") && deleteMutation.mutate({ id: item.id })}><Trash2 size={16} /></button></div></td></tr>)}</tbody></table></div>}</section>}
 
-    {activeTab === "orders" && <section className="admin-panel"><div className="panel-heading"><div><span className="admin-kicker">INCOMING ORDERS</span><h2>الطلبات الواردة</h2></div><span className="panel-meta">{orders.length} طلب</span></div>{orderQuery.isLoading ? <div className="admin-empty">جاري تحميل الطلبات...</div> : orders.length ? <div className="admin-table-wrap"><table className="admin-table orders-table"><thead><tr><th>الطلب</th><th>العميل</th><th>النوع</th><th>التفاصيل</th><th>الإجمالي</th><th>الحالة</th></tr></thead><tbody>{orders.map((order) => { let lines: Array<{ title: string; quantity: number }> = []; try { lines = JSON.parse(order.itemsJson); } catch { lines = []; } return <tr key={order.id}><td><strong>#{order.id}</strong><small className="table-sub">{new Date(order.createdAt).toLocaleString("ar-SA", { dateStyle: "short", timeStyle: "short" })}</small></td><td><strong>{order.customerName}</strong><small className="table-sub">{order.customerPhone || "—"}</small></td><td><span className="category-chip">{orderTypeLabels[order.orderType]}</span>{order.tableNumber && <small className="table-sub">طاولة {order.tableNumber}</small>}{order.deliveryZone && <small className="table-sub">{zoneLabels[order.deliveryZone] || order.deliveryZone} · {order.deliveryFee} SAR</small>}</td><td><div className="order-lines">{lines.slice(0, 3).map((line, index) => <small key={`${line.title}-${index}`}>{line.quantity}× {line.title}</small>)}{lines.length > 3 && <small>+{lines.length - 3} أصناف</small>}</div></td><td><strong>{order.total} SAR</strong><small className="table-sub">ضريبة {order.taxAmount} SAR</small></td><td><select className={`status-select ${order.status}`} value={order.status} onChange={(event) => orderStatusMutation.mutate({ id: order.id, status: event.target.value as "new" | "confirmed" | "preparing" | "ready" | "delivered" | "cancelled" })}><option value="new">جديد</option><option value="confirmed">مؤكد</option><option value="preparing">قيد التجهيز</option><option value="ready">جاهز</option><option value="delivered">مكتمل</option><option value="cancelled">ملغي</option></select></td></tr>; })}</tbody></table></div> : <div className="admin-empty"><PackageCheck size={30} /><p>لا توجد طلبات واردة حتى الآن.</p></div>}</section>}
+    {activeTab === "orders" && <section className="admin-panel"><div className="panel-heading"><div><span className="admin-kicker">INCOMING ORDERS</span><h2>الطلبات الواردة</h2></div><span className="panel-meta">{orders.length} طلب</span></div>{orderQuery.isLoading ? <div className="admin-empty">جاري تحميل الطلبات...</div> : orders.length ? <div className="admin-table-wrap"><table className="admin-table orders-table"><thead><tr><th>الطلب</th><th>العميل</th><th>النوع</th><th>التفاصيل</th><th>الإجمالي</th><th>الحالة</th><th>الفاتورة</th></tr></thead><tbody>{orders.map((order) => { let lines: Array<{ title: string; quantity: number }> = []; try { lines = JSON.parse(order.itemsJson); } catch { lines = []; } return <tr key={order.id}><td><strong>#{order.id}</strong><small className="table-sub">{new Date(order.createdAt).toLocaleString("ar-SA", { dateStyle: "short", timeStyle: "short" })}</small></td><td><strong>{order.customerName}</strong><small className="table-sub">{order.customerPhone || "—"}</small></td><td><span className="category-chip">{orderTypeLabels[order.orderType]}</span>{order.tableNumber && <small className="table-sub">طاولة {order.tableNumber}</small>}{order.deliveryZone && <small className="table-sub">{zoneLabels[order.deliveryZone] || order.deliveryZone} · {order.deliveryFee} SAR</small>}</td><td><div className="order-lines">{lines.slice(0, 3).map((line, index) => <small key={`${line.title}-${index}`}>{line.quantity}× {line.title}</small>)}{lines.length > 3 && <small>+{lines.length - 3} أصناف</small>}</div></td><td><strong>{order.total} SAR</strong><small className="table-sub">ضريبة {order.taxAmount} SAR</small></td><td><select className={`status-select ${order.status}`} value={order.status} onChange={(event) => orderStatusMutation.mutate({ id: order.id, status: event.target.value as "new" | "confirmed" | "preparing" | "ready" | "delivered" | "cancelled" })}><option value="new">جديد</option><option value="confirmed">مؤكد</option><option value="preparing">قيد التجهيز</option><option value="ready">جاهز</option><option value="delivered">مكتمل</option><option value="cancelled">ملغي</option></select></td><td><button className="invoice-print-button" onClick={() => printInvoice(order)}><Printer size={15} /> طباعة</button></td></tr>; })}</tbody></table></div> : <div className="admin-empty"><PackageCheck size={30} /><p>لا توجد طلبات واردة حتى الآن.</p></div>}</section>}
+
+    {activeTab === "tables" && <section className="admin-panel"><div className="panel-heading"><div><span className="admin-kicker">TABLE QR CODES</span><h2>رموز QR للطاولات</h2></div><label className="table-count-field">عدد الطاولات<input type="number" min="1" max="100" value={tableCount} onChange={(event) => setTableCount(Math.max(1, Math.min(100, Number(event.target.value))))} /></label></div><p className="qr-help">كل رمز يفتح القائمة مع تثبيت رقم الطاولة تلقائيًا عند الانتقال إلى تأكيد الطلب.</p><div className="table-qr-grid">{Array.from({ length: tableCount }, (_, index) => index + 1).map((number) => <article className="table-qr-card" key={number}><span>طاولة</span><strong>{number}</strong><img src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(tableUrl(number))}`} alt={`QR طاولة ${number}`} /><small>{tableUrl(number)}</small><button onClick={() => printTableQr(number)}><Printer size={15} /> طباعة الرمز</button></article>)}</div></section>}
 
     {activeTab === "reservations" && <section className="admin-panel"><div className="panel-heading"><div><span className="admin-kicker">RESERVATIONS</span><h2>{copy.reservations}</h2></div><span className="panel-meta">{reservations.length} إجمالي الحجوزات</span></div>{reservationQuery.isLoading ? <div className="admin-empty">جاري تحميل الحجوزات...</div> : reservations.length ? <div className="admin-table-wrap"><table className="admin-table reservations-table"><thead><tr><th>الضيف</th><th>التاريخ والوقت</th><th>الضيوف</th><th>الحالة</th><th /></tr></thead><tbody>{reservations.map((item) => <tr key={item.id}><td><strong>{item.guestName}</strong><small className="table-sub">طلب رقم #{item.id}</small></td><td>{new Date(item.reservationAt).toLocaleString("ar-SA", { dateStyle: "medium", timeStyle: "short" })}</td><td>{item.guestCount}</td><td><select className={`status-select ${item.status}`} value={item.status} onChange={(event) => reservationStatusMutation.mutate({ id: item.id, status: event.target.value as "pending" | "confirmed" | "cancelled" })}><option value="pending">معلق</option><option value="confirmed">مؤكد</option><option value="cancelled">ملغي</option></select></td><td><Check className={item.status === "confirmed" ? "status-check visible" : "status-check"} size={17} /></td></tr>)}</tbody></table></div> : <div className="admin-empty"><LayoutDashboard size={28} /><p>لا توجد حجوزات حتى الآن.</p></div>}</section>}
 

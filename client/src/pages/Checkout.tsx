@@ -24,13 +24,14 @@ const deliveryZones: { value: DeliveryZone; label: string; fee: number }[] = [
 ];
 
 export default function Checkout() {
-  const [orderType, setOrderType] = useState<OrderType>("takeaway");
+  const scannedTable = new URLSearchParams(window.location.search).get("table") || "";
+  const [orderType, setOrderType] = useState<OrderType>(scannedTable ? "table" : "takeaway");
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [address, setAddress] = useState("");
   const [deliveryZone, setDeliveryZone] = useState<DeliveryZone>("central");
   const [roomNumber, setRoomNumber] = useState("");
-  const [tableNumber, setTableNumber] = useState("");
+  const [tableNumber, setTableNumber] = useState(scannedTable);
   const [reservationDate, setReservationDate] = useState("");
   const [reservationTime, setReservationTime] = useState("20:00");
   const [guestCount, setGuestCount] = useState("2");
