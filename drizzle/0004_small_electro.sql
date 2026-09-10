@@ -1,0 +1,1 @@
+ALTER TABLE `menu_items` MODIFY COLUMN `addOnsJson` text NOT NULL;
