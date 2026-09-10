@@ -14,6 +14,9 @@ import {
   Utensils,
   X,
 } from "lucide-react";
+import { trpc } from "@/lib/trpc";
+import { useLocation } from "wouter";
+import Admin from "./pages/Admin";
 
 const ASSET = {
   hero: "/manus-storage/olive-and-clay-hero_646d0456.jpg",
@@ -21,7 +24,6 @@ const ASSET = {
   flatbread: "/manus-storage/zaatar-flatbread_3d1242e4.jpg",
   dessert: "/manus-storage/rose-pistachio_fd5f0ad8.jpg",
 };
-
 type Locale = "ar" | "en" | "fr";
 type CategoryKey = "all" | "breakfast" | "mezza" | "mains" | "desserts";
 
@@ -52,6 +54,9 @@ const categories: { key: CategoryKey; label: keyof typeof copy.ar }[] = [
 ];
 
 function App() {
+  const [location] = useLocation();
+  if (location === "/admin") return <Admin />;
+
   const [locale, setLocale] = useState<Locale>("ar");
   const [activeCategory, setActiveCategory] = useState<CategoryKey>("all");
   const [query, setQuery] = useState("");
@@ -59,14 +64,28 @@ function App() {
   const [showBooking, setShowBooking] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [reservationName, setReservationName] = useState("");
+  const [reservationGuests, setReservationGuests] = useState("2");
+  const [reservationDate, setReservationDate] = useState("");
+  const [reservationTime, setReservationTime] = useState("20:00");
   const t = copy[locale];
   const isArabic = locale === "ar";
+  const menuQuery = trpc.menu.list.useQuery();
+  const reservationMutation = trpc.menu.createReservation.useMutation({
+    onSuccess: () => setSubmitted(true),
+  });
 
-  const filteredItems = useMemo(() => menuItems.filter((item) => {
+  const liveMenuItems = menuQuery.data?.length ? menuQuery.data.map((item) => ({
+    id: String(item.id), category: item.category, image: item.imageUrl, price: String(item.price), rating: item.rating,
+    vegan: Boolean(item.isVegan), popular: Boolean(item.isPopular),
+    ar: [item.nameAr, item.descriptionAr], en: [item.nameEn, item.descriptionEn], fr: [item.nameFr, item.descriptionFr],
+  })) : menuItems;
+
+  const filteredItems = useMemo(() => liveMenuItems.filter((item) => {
     const matchesCategory = activeCategory === "all" || item.category === activeCategory;
     const [title, description] = item[locale];
     return matchesCategory && `${title} ${description}`.toLowerCase().includes(query.toLowerCase());
-  }), [activeCategory, locale, query]);
+  }), [activeCategory, locale, query, liveMenuItems]);
 
   const toggleFavourite = (id: string) => setFavourites((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
 
@@ -136,9 +155,9 @@ function App() {
         <section className="visit-section" id="visit"><div className="visit-card"><div><div className="section-kicker">{locale === "ar" ? "أهلاً بكم" : locale === "fr" ? "Bienvenue" : "Welcome in"}</div><h2>{locale === "ar" ? "نلتقي حول المائدة" : locale === "fr" ? "À bientôt autour de la table" : "Meet us around the table"}</h2></div><div className="visit-details"><span><Clock3 size={17} /> {t.hours}<b>12:00 — 00:00</b></span><span><MapPin size={17} /> {t.address}<b>{locale === "ar" ? "الخريطة والاتجاهات" : locale === "fr" ? "Carte & itinéraire" : "Map & directions"} <ArrowUpRight size={14} /></b></span></div><button className="primary-cta light" onClick={() => { setSubmitted(false); setShowBooking(true); }}>{t.reserve}<ArrowUpRight size={18} /></button></div></section>
       </main>
 
-      <footer className="footer"><a className="brand footer-brand" href="#top"><span className="brand-mark"><Leaf size={18} strokeWidth={1.6} /></span><span><strong>Olive</strong><em>& Clay</em></span></a><span>© 2024 Olive & Clay</span><a href="tel:+966555555555">{t.call} <ArrowUpRight size={14} /></a></footer>
+      <footer className="footer"><a className="brand footer-brand" href="#top"><span className="brand-mark"><Leaf size={18} strokeWidth={1.6} /></span><span><strong>Olive</strong><em>& Clay</em></span></a><span>© 2024 Olive & Clay</span><a href="/admin">Admin</a><a href="tel:+966555555555">{t.call} <ArrowUpRight size={14} /></a></footer>
 
-      {showBooking && <div className="modal-backdrop" role="presentation" onClick={() => setShowBooking(false)}><div className="booking-modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setShowBooking(false)} aria-label={t.close}><X size={20} /></button>{submitted ? <div className="success-state"><div className="success-icon"><Check size={25} /></div><h3>{t.booked}</h3><p>{t.bookedText}</p><button className="primary-cta" onClick={() => setShowBooking(false)}>{t.close}</button></div> : <><div className="section-kicker">{t.reserve}</div><h2>{t.reserveTitle}</h2><form onSubmit={(event) => { event.preventDefault(); setSubmitted(true); }}><label>{t.name}<input required placeholder={isArabic ? "اكتب اسمك" : "Your name"} /></label><div className="form-row"><label>{t.guests}<select defaultValue="2"><option>2</option><option>3</option><option>4</option><option>5+</option></select></label><label>{t.date}<input required type="date" /></label></div><label>{t.time}<select defaultValue="20:00"><option>19:00</option><option>20:00</option><option>21:00</option><option>22:00</option></select></label><button className="primary-cta submit-button" type="submit">{t.confirm}<CalendarDays size={17} /></button></form></>}</div></div>}
+      {showBooking && <div className="modal-backdrop" role="presentation" onClick={() => setShowBooking(false)}><div className="booking-modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setShowBooking(false)} aria-label={t.close}><X size={20} /></button>{submitted ? <div className="success-state"><div className="success-icon"><Check size={25} /></div><h3>{t.booked}</h3><p>{t.bookedText}</p><button className="primary-cta" onClick={() => setShowBooking(false)}>{t.close}</button></div> : <><div className="section-kicker">{t.reserve}</div><h2>{t.reserveTitle}</h2><form onSubmit={(event) => { event.preventDefault(); reservationMutation.mutate({ guestName: reservationName, guestCount: Number(reservationGuests), reservationAt: new Date(`${reservationDate}T${reservationTime}:00`) }); }}><label>{t.name}<input required value={reservationName} onChange={(event) => setReservationName(event.target.value)} placeholder={isArabic ? "اكتب اسمك" : "Your name"} /></label><div className="form-row"><label>{t.guests}<select value={reservationGuests} onChange={(event) => setReservationGuests(event.target.value)}><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5+</option></select></label><label>{t.date}<input required type="date" value={reservationDate} onChange={(event) => setReservationDate(event.target.value)} /></label></div><label>{t.time}<select value={reservationTime} onChange={(event) => setReservationTime(event.target.value)}><option value="19:00">19:00</option><option value="20:00">20:00</option><option value="21:00">21:00</option><option value="22:00">22:00</option></select></label><button className="primary-cta submit-button" type="submit" disabled={reservationMutation.isPending}>{reservationMutation.isPending ? "..." : t.confirm}<CalendarDays size={17} /></button></form></>}</div></div>}
     </div>
   );
 }
